@@ -14,7 +14,7 @@ const road = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
 
 
 
-const N = 200;
+const N = 40;
 const cars = generateCars(N);
 
 let bestCar = cars[0];
