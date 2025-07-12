@@ -1,10 +1,10 @@
 class GeneticAlgorithm {
     constructor() {
         this.generation = 1;
-        this.populationSize = 100;
-        this.mutationRate = 0.1;
-        this.eliteCount = 20; // Keep more elite performers
-        this.crossoverRate = 0.8;
+        this.populationSize = 50; // Smaller population for faster learning
+        this.mutationRate = 0.05; // Lower mutation rate
+        this.eliteCount = 10; // Keep top performers
+        this.crossoverRate = 0.9; // High crossover rate
         this.generationHistory = [];
     }
 
@@ -29,12 +29,13 @@ class GeneticAlgorithm {
         
         // Fill rest with offspring from top performers
         while (newPopulation.length < this.populationSize) {
-            // Select parents from top 50% of population
-            const parent1 = this.selectParent(cars.slice(0, Math.floor(cars.length / 2)));
-            const parent2 = this.selectParent(cars.slice(0, Math.floor(cars.length / 2)));
+            // Select parents from top 30% of population
+            const topPerformers = cars.slice(0, Math.max(3, Math.floor(cars.length * 0.3)));
+            const parent1 = this.selectParent(topPerformers);
+            const parent2 = this.selectParent(topPerformers);
             
             let childBrain;
-            if (Math.random() < this.crossoverRate) {
+            if (Math.random() < this.crossoverRate && parent1 !== parent2) {
                 childBrain = this.crossover(parent1.brain, parent2.brain);
             } else {
                 childBrain = JSON.parse(JSON.stringify(parent1.brain));
@@ -55,53 +56,54 @@ class GeneticAlgorithm {
         cars.forEach(car => {
             let fitness = 0;
             
-            // Primary reward: distance traveled (most important)
-            fitness += car.distanceTraveled * 100;
+            // Primary reward: distance traveled (exponential reward for going far)
+            fitness += Math.pow(car.distanceTraveled, 1.5) * 10;
             
-            // Bonus for staying alive longer
-            fitness += car.timeAlive * 0.5;
+            // Major bonus for staying alive longer
+            fitness += car.timeAlive * 2;
             
-            // Bonus for maintaining good speed
+            // Huge bonus for maintaining good speed and direction
             const avgSpeed = car.distanceTraveled / Math.max(car.timeAlive, 1);
-            fitness += avgSpeed * 50;
+            fitness += avgSpeed * 100;
             
-            // Bonus for staying in lanes
-            fitness += car.laneKeepingScore * 100;
-            
-            // Heavy penalty for collisions
-            fitness -= car.collisionPenalty * 2;
-            
-            // Bonus for reaching checkpoints
-            fitness += car.checkpointsReached * 500;
+            // Bonus for staying in lanes (very important)
+            fitness += car.laneKeepingScore * 50;
             
             // Bonus for smooth driving
-            fitness += car.smoothDrivingScore * 20;
+            fitness += car.smoothDrivingScore * 10;
             
-            car.fitness = Math.max(0, fitness);
+            // Massive bonus for reaching checkpoints
+            fitness += car.checkpointsReached * 1000;
+            
+            // Heavy penalty for collisions (but not too harsh to allow learning)
+            fitness -= car.collisionPenalty;
+            
+            // Bonus for consecutive good behavior
+            fitness += car.consecutiveGoodFrames * 5;
+            
+            car.fitness = Math.max(1, fitness); // Ensure minimum fitness
         });
     }
     
     selectParent(cars) {
-        // Weighted random selection based on fitness
-        const totalFitness = cars.reduce((sum, car) => sum + car.fitness, 0);
-        if (totalFitness === 0) {
-            return cars[Math.floor(Math.random() * cars.length)];
+        // Tournament selection with bias toward better performers
+        const tournamentSize = Math.min(3, cars.length);
+        const tournament = [];
+        
+        for (let i = 0; i < tournamentSize; i++) {
+            tournament.push(cars[Math.floor(Math.random() * cars.length)]);
         }
         
-        let random = Math.random() * totalFitness;
-        for (let car of cars) {
-            random -= car.fitness;
-            if (random <= 0) {
-                return car;
-            }
-        }
-        return cars[0];
+        tournament.sort((a, b) => b.fitness - a.fitness);
+        
+        // 70% chance to pick best, 30% chance for diversity
+        return Math.random() < 0.7 ? tournament[0] : tournament[Math.floor(Math.random() * tournament.length)];
     }
     
     crossover(brain1, brain2) {
         const newBrain = JSON.parse(JSON.stringify(brain1));
         
-        // Single-point crossover for each level
+        // Uniform crossover for each level
         for (let levelIndex = 0; levelIndex < newBrain.levels.length; levelIndex++) {
             const level1 = brain1.levels[levelIndex];
             const level2 = brain2.levels[levelIndex];
@@ -141,7 +143,7 @@ class GeneticAlgorithm {
             avgFitness: cars.reduce((sum, car) => sum + car.fitness, 0) / cars.length,
             bestDistance: Math.max(...cars.map(car => car.distanceTraveled)),
             aliveCount: aliveCars.length,
-            successRate: cars.filter(car => car.checkpointsReached > 3).length / cars.length
+            successRate: cars.filter(car => car.checkpointsReached > 2).length / cars.length
         };
         
         this.generationHistory.push(stats);

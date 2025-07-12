@@ -19,7 +19,7 @@ let bestCar = null;
 let traffic = [];
 let frameCount = 0;
 let generationTimer = 0;
-let maxGenerationTime = 1800; // 30 seconds at 60fps
+let maxGenerationTime = 1200; // 20 seconds at 60fps for faster evolution
 
 // Saved brain for loading
 let savedBrain = null;
@@ -40,7 +40,7 @@ function initializeSimulation() {
         for (let i = 0; i < cars.length; i++) {
             cars[i].brain = JSON.parse(JSON.stringify(savedBrain));
             if (i !== 0) {
-                EnhancedNeuralNetwork.mutate(cars[i].brain, geneticAlgorithm.mutationRate);
+                EnhancedNeuralNetwork.mutate(cars[i].brain, geneticAlgorithm.mutationRate * (1 + i * 0.1));
             }
         }
     }
@@ -61,28 +61,26 @@ function generateCars(count) {
 
 function generateTraffic() {
     traffic = [
-        new EnhancedCar(road.getLaneCenter(1), -100, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -300, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -300, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -500, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(1), -500, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(1), -700, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -700, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -900, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -900, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(1), -1100, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -1100, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -1300, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -1300, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(1), -1500, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -1700, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -1900, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(1), -2100, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -2100, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -2300, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(1), -2500, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(0), -2700, 30, 50, "DUMMY", 2),
-        new EnhancedCar(road.getLaneCenter(2), -2900, 30, 50, "DUMMY", 2),
+        new EnhancedCar(road.getLaneCenter(1), -200, 30, 50, "DUMMY", 1.5),
+        new EnhancedCar(road.getLaneCenter(0), -400, 30, 50, "DUMMY", 1.8),
+        new EnhancedCar(road.getLaneCenter(2), -400, 30, 50, "DUMMY", 1.2),
+        new EnhancedCar(road.getLaneCenter(1), -600, 30, 50, "DUMMY", 2),
+        new EnhancedCar(road.getLaneCenter(0), -800, 30, 50, "DUMMY", 1.5),
+        new EnhancedCar(road.getLaneCenter(2), -800, 30, 50, "DUMMY", 1.8),
+        new EnhancedCar(road.getLaneCenter(1), -1000, 30, 50, "DUMMY", 1.2),
+        new EnhancedCar(road.getLaneCenter(0), -1200, 30, 50, "DUMMY", 2),
+        new EnhancedCar(road.getLaneCenter(2), -1200, 30, 50, "DUMMY", 1.5),
+        new EnhancedCar(road.getLaneCenter(1), -1400, 30, 50, "DUMMY", 1.8),
+        new EnhancedCar(road.getLaneCenter(0), -1600, 30, 50, "DUMMY", 1.2),
+        new EnhancedCar(road.getLaneCenter(2), -1600, 30, 50, "DUMMY", 2),
+        new EnhancedCar(road.getLaneCenter(1), -1800, 30, 50, "DUMMY", 1.5),
+        new EnhancedCar(road.getLaneCenter(0), -2000, 30, 50, "DUMMY", 1.8),
+        new EnhancedCar(road.getLaneCenter(2), -2000, 30, 50, "DUMMY", 1.2),
+        new EnhancedCar(road.getLaneCenter(1), -2200, 30, 50, "DUMMY", 2),
+        new EnhancedCar(road.getLaneCenter(0), -2400, 30, 50, "DUMMY", 1.5),
+        new EnhancedCar(road.getLaneCenter(2), -2600, 30, 50, "DUMMY", 1.8),
+        new EnhancedCar(road.getLaneCenter(1), -2800, 30, 50, "DUMMY", 1.2),
+        new EnhancedCar(road.getLaneCenter(0), -3000, 30, 50, "DUMMY", 2),
     ];
 }
 
@@ -95,7 +93,7 @@ function shouldEvolve() {
     const aliveCount = cars.filter(car => !car.damaged).length;
     const timeUp = generationTimer > maxGenerationTime;
     const allDead = aliveCount === 0;
-    const autoEvolveReady = uiManager.shouldAutoEvolve() && (timeUp || aliveCount < 10);
+    const autoEvolveReady = uiManager.shouldAutoEvolve() && (timeUp || aliveCount < 5);
     
     return allDead || autoEvolveReady;
 }
@@ -138,9 +136,9 @@ function animate(time) {
         cars[i].update(road.borders, traffic, particleSystem);
     }
 
-    // Find best car (furthest distance)
+    // Find best car (highest fitness)
     bestCar = cars.reduce((best, car) => {
-        return car.distanceTraveled > best.distanceTraveled ? car : best;
+        return car.fitness > best.fitness ? car : best;
     }, cars[0]);
     
     window.bestCar = bestCar;

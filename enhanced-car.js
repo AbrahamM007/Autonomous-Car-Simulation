@@ -5,10 +5,10 @@ class EnhancedCar {
         this.width = width;
         this.height = height;
         this.speed = 0;
-        this.acceleration = 0.2;
-        this.reverseSpeed = 1.5;
+        this.acceleration = 0.15;
+        this.reverseSpeed = 1;
         this.maxSpeed = maxSpeed;
-        this.friction = 0.05;
+        this.friction = 0.03;
         this.angle = 0;
         this.damaged = false;
         
@@ -22,7 +22,8 @@ class EnhancedCar {
         this.checkpointsReached = 0;
         this.lastY = y;
         this.lastAngle = 0;
-        this.speedHistory = [];
+        this.lastSpeed = 0;
+        this.consecutiveGoodFrames = 0;
         
         // Visual properties
         this.color = this.generateColor();
@@ -31,8 +32,8 @@ class EnhancedCar {
 
         if (controlType !== "DUMMY") {
             this.sensor = new EnhancedSensor(this);
-            // Simpler, more effective network architecture
-            this.brain = new EnhancedNeuralNetwork([this.sensor.rayCount, 6, 4]);
+            // Optimized network: 7 sensors + speed + angle = 9 inputs
+            this.brain = new EnhancedNeuralNetwork([9, 8, 4]);
         }
 
         this.controls = new Controls(controlType);
@@ -53,7 +54,7 @@ class EnhancedCar {
             this.polygon = this.createPolygon();
             this.damaged = this.assessDamage(roadBorders, traffic);
             
-            this.updateMetrics(roadBorders);
+            this.updateMetrics(roadBorders, traffic);
         }
 
         if (this.sensor) {
@@ -62,45 +63,70 @@ class EnhancedCar {
             const outputs = EnhancedNeuralNetwork.feedForward(inputs, this.brain);
 
             if (this.useBrain) {
-                // Use threshold for decision making
-                this.controls.forward = outputs[0] > 0.1;
-                this.controls.left = outputs[1] > 0.1;
-                this.controls.right = outputs[2] > 0.1;
-                this.controls.reverse = outputs[3] > 0.1;
+                // Smart decision making with thresholds
+                this.controls.forward = outputs[0] > 0.6;
+                this.controls.left = outputs[1] > 0.7;
+                this.controls.right = outputs[2] > 0.7;
+                this.controls.reverse = outputs[3] > 0.8;
+                
+                // Prevent conflicting controls
+                if (this.controls.left && this.controls.right) {
+                    this.controls.left = outputs[1] > outputs[2];
+                    this.controls.right = !this.controls.left;
+                }
             }
         }
     }
     
     prepareSensorInputs() {
-        // Normalize sensor inputs between 0 and 1
-        return this.sensor.readings.map(s => s == null ? 0 : 1 - s.offset);
+        // Normalize sensor inputs and add car state
+        const sensorInputs = this.sensor.readings.map(s => s == null ? 0 : 1 - s.offset);
+        
+        // Add car state information
+        const speedInput = this.speed / this.maxSpeed;
+        const angleInput = Math.sin(this.angle); // Normalized angle
+        
+        return [...sensorInputs, speedInput, angleInput];
     }
     
-    updateMetrics(roadBorders) {
+    updateMetrics(roadBorders, traffic) {
         this.timeAlive++;
         
-        // Track distance traveled
+        // Track distance traveled (main reward)
         const distanceThisFrame = Math.abs(this.y - this.lastY);
         this.distanceTraveled += distanceThisFrame;
         this.lastY = this.y;
         
-        // Lane keeping score
+        // Lane keeping score (stay in center)
         const roadCenter = roadBorders[0][0].x + (roadBorders[1][0].x - roadBorders[0][0].x) / 2;
         const distanceFromCenter = Math.abs(this.x - roadCenter);
         const maxRoadWidth = Math.abs(roadBorders[1][0].x - roadBorders[0][0].x);
-        const laneKeepingThisFrame = Math.max(0, 1 - (distanceFromCenter / (maxRoadWidth / 2)));
+        const laneKeepingThisFrame = Math.max(0, 1 - (distanceFromCenter / (maxRoadWidth / 3)));
         this.laneKeepingScore += laneKeepingThisFrame;
         
-        // Smooth driving score (penalize erratic steering)
+        // Smooth driving score (reward consistent behavior)
         const angleDiff = Math.abs(this.angle - this.lastAngle);
-        this.smoothDrivingScore += Math.max(0, 0.1 - angleDiff * 10);
-        this.lastAngle = this.angle;
+        const speedDiff = Math.abs(this.speed - this.lastSpeed);
+        if (angleDiff < 0.05 && speedDiff < 0.1) {
+            this.consecutiveGoodFrames++;
+            this.smoothDrivingScore += this.consecutiveGoodFrames * 0.1;
+        } else {
+            this.consecutiveGoodFrames = 0;
+        }
         
-        // Checkpoint system
-        const checkpointDistance = 200;
+        this.lastAngle = this.angle;
+        this.lastSpeed = this.speed;
+        
+        // Checkpoint system (major milestones)
+        const checkpointDistance = 150;
         const expectedCheckpoints = Math.floor(this.distanceTraveled / checkpointDistance);
         if (expectedCheckpoints > this.checkpointsReached) {
             this.checkpointsReached = expectedCheckpoints;
+        }
+        
+        // Bonus for maintaining good speed
+        if (this.speed > 1 && this.speed < this.maxSpeed * 0.8) {
+            this.smoothDrivingScore += 0.5;
         }
     }
 
@@ -108,7 +134,7 @@ class EnhancedCar {
         // Check road border collision
         for (let i = 0; i < roadBorders.length; i++) {
             if (polysIntersect(this.polygon, roadBorders[i])) {
-                this.collisionPenalty += 100;
+                this.collisionPenalty += 1000;
                 return true;
             }
         }
@@ -116,7 +142,7 @@ class EnhancedCar {
         // Check traffic collision
         for (let i = 0; i < traffic.length; i++) {
             if (polysIntersect(this.polygon, traffic[i].polygon)) {
-                this.collisionPenalty += 50;
+                this.collisionPenalty += 500;
                 return true;
             }
         }
@@ -154,14 +180,14 @@ class EnhancedCar {
             this.speed += this.acceleration;
         }
         if (this.controls.reverse) {
-            this.speed = -this.reverseSpeed;
+            this.speed -= this.acceleration * 0.5;
         }
 
         if (this.speed > this.maxSpeed) {
             this.speed = this.maxSpeed;
         }
-        if (this.speed < -this.maxSpeed / 2) {
-            this.speed = -this.maxSpeed / 2;
+        if (this.speed < -this.maxSpeed / 3) {
+            this.speed = -this.maxSpeed / 3;
         }
         
         if (this.speed > 0) {
@@ -177,10 +203,10 @@ class EnhancedCar {
         if (this.speed !== 0) {
             const flip = this.speed > 0 ? 1 : -1;
             if (this.controls.left) {
-                this.angle += 0.03 * flip;
+                this.angle += 0.025 * flip;
             }
             if (this.controls.right) {
-                this.angle -= 0.03 * flip;
+                this.angle -= 0.025 * flip;
             }
         }
 
