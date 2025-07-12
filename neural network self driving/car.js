@@ -12,13 +12,22 @@ class Car {
         this.angle = 0;
 
         this.damaged = false;
+        
+        // Enhanced fitness tracking
+        this.fitness = 0;
+        this.distanceTraveled = 0;
+        this.timeAlive = 0;
+        this.collisionPenalty = 0;
+        this.laneKeepingScore = 0;
+        this.lastY = y;
 
         this.useBrain = controlType == "AI";
 
         if (controlType != "DUMMY") {
             this.sensor = new Sensor(this);
+            // Enhanced network architecture
             this.brain = new NeuralNetwork(
-                [this.sensor.rayCount, 6, 4]
+                [this.sensor.rayCount, 8, 6, 4] // Added more layers
             );
         }
 
@@ -31,6 +40,9 @@ class Car {
             this.#move();
             this.polygon = this.#createPolygon();
             this.damaged = this.#assessDamage(roadBorders, traffic);
+            
+            // Update fitness metrics
+            this.#updateFitness(roadBorders);
         }
 
         if (this.sensor) {
@@ -41,22 +53,50 @@ class Car {
             const outputs = NeuralNetwork.feedForward(offsets, this.brain);
 
             if (this.useBrain) {
-                this.controls.forward = outputs[0];
-                this.controls.left = outputs[1];
-                this.controls.right = outputs[2];
-                this.controls.reverse = outputs[3];
+                // Use sigmoid outputs with threshold
+                this.controls.forward = outputs[0] > 0.5;
+                this.controls.left = outputs[1] > 0.5;
+                this.controls.right = outputs[2] > 0.5;
+                this.controls.reverse = outputs[3] > 0.5;
             }
         }
+    }
+    
+    // Enhanced fitness calculation
+    #updateFitness(roadBorders) {
+        this.timeAlive++;
+        
+        // Distance reward
+        const distanceThisFrame = Math.abs(this.y - this.lastY);
+        this.distanceTraveled += distanceThisFrame;
+        this.lastY = this.y;
+        
+        // Lane keeping reward (closer to center = better)
+        const roadCenter = roadBorders[0][0].x + (roadBorders[1][0].x - roadBorders[0][0].x) / 2;
+        const distanceFromCenter = Math.abs(this.x - roadCenter);
+        const maxRoadWidth = Math.abs(roadBorders[1][0].x - roadBorders[0][0].x);
+        this.laneKeepingScore += (1 - distanceFromCenter / maxRoadWidth) * 0.1;
+        
+        // Speed reward (encourage consistent speed)
+        const speedReward = Math.min(this.speed / this.maxSpeed, 1) * 0.05;
+        
+        // Calculate total fitness
+        this.fitness = this.distanceTraveled * 0.1 + 
+                      this.laneKeepingScore + 
+                      speedReward * this.timeAlive - 
+                      this.collisionPenalty;
     }
 
     #assessDamage(roadBorders, traffic) {
         for (let i = 0; i < roadBorders.length; i++) {
             if (polysIntersect(this.polygon, roadBorders[i])) {
+                this.collisionPenalty += 1000; // Heavy penalty for collision
                 return true;
             }
         }
         for (let i = 0; i < traffic.length; i++) {
             if (polysIntersect(this.polygon, traffic[i].polygon)) {
+                this.collisionPenalty += 500; // Penalty for hitting traffic
                 return true;
             }
         }

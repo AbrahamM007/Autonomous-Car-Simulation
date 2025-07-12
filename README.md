@@ -1,93 +1,80 @@
-<h1>Autonomous Car Simulation with Neural Network AI.</h1>
-
-This is a browser-based simulation where virtual cars attempt to drive autonomously on a road. The key idea is to train cars using a neural network, enabling them to steer clear of traffic and borders using sensor input.
-</br>
-<h3>🚗 Core Features</h3>
-Self-driving cars using a neural network
-
-Obstacle detection with simulated sensors
-
-Learning via mutating models & saving best models
-
-Interactive keyboard-controlled test car
-
+<h1>Autonomous Car Simulation Powered by Neural Network AI</h1>
+Experience a browser-based simulation where virtual cars learn to drive autonomously along a road. The system trains each car using a custom neural network, enabling it to avoid traffic and stay within lane boundaries using real-time sensor input.
 </br>
 
-<h3>🧠 Project Architecture</h3>
-index.html: Sets up the canvas and loads all scripts
+<h3>🚗 Key Features</h3>
+Self-driving vehicles controlled by a neural network
 
-style.css: Styles the two canvases and buttons
+Simulated sensors for obstacle and border detection
 
-main.js: Orchestrates the simulation: spawns cars, animates them, and handles saving/loading NN data
+Evolution-based learning through mutation and model retention
 
-car.js: Core car logic including movement, collision detection, and AI behavior
-
-sensor.js: Simulates sensors for obstacle detection
-
-network.js: Implements a basic feedforward neural network
-
-road.js: Draws roads and lane borders
-
-controls.js: Enables manual car control using arrow keys
-
-utils.js: Contains geometric functions and utilities
-
-visualizer.js: Draws the neural network on screen
+Interactive test car with keyboard control for experimentation
 
 </br>
+<h3>🧠 Project Structure</h3>
+index.html – Initializes the canvas and loads all required scripts
 
-<h3>📘 Important JavaScript Concepts Covered</h3>
+style.css – Styles the dual canvases and interface elements
 
-1. Object-Oriented Programming (OOP)
-Use of ES6 class syntax for modular design (Car, Sensor, Road, Controls, NeuralNetwork, etc.)
+main.js – Coordinates the simulation: spawns cars, animates motion, and handles NN storage
 
-   Constructor methods, private methods (#method()), instance properties, inheritance of responsibility across classes
+car.js – Contains logic for vehicle movement, collisions, and AI behavior
 
-2. Encapsulation and Private Methods
-Modern JS feature # used for private functions like #createPolygon, #move, etc. in Car
+sensor.js – Implements sensor simulation using ray casting
 
-3. Canvas API
-Drawing cars, roads, sensor rays, and the neural network
+network.js – Defines the feedforward neural network logic
 
-   Transformations (e.g., translate, rotate) used for rotating/drawing cars based on direction
+road.js – Renders the road, lane lines, and boundaries
 
-4. Animation Loop
-requestAnimationFrame(animate) for smooth rendering
+controls.js – Allows manual car control via keyboard inputs
 
-   Dynamic canvas resizing (canvas.height = window.innerHeight)
+utils.js – Includes geometry helpers and utility functions
 
-5. Collision Detection
-   Geometry-based collision detection using polygons and intersections (getIntersection(), polysIntersect())
+visualizer.js – Renders the neural network for real-time visualization
 
-6. AI & Neural Networks
-Custom-built feedforward neural network with adjustable weights and biases
-
-   Input: Sensor distances; Output: Steering decisions
-
-   Simple activation threshold: output = sum > bias ? 1 : 0
-
-   Mutation for learning (NeuralNetwork.mutate())
-
-7. Sensor Simulation (Ray Casting)
-Car sensors implemented via ray casting
-
-   Each ray is checked for intersection with road borders and traffic cars
-
-8. User Interaction
-Buttons to save/discard best-performing neural networks using localStorage
-
-9. Functional Programming Elements
-Use of array methods like .map(), .forEach(), .find(), Math.min(...) with spread operator
 </br>
+<h3>📘 Core JavaScript Concepts Demonstrated</h3>
+Object-Oriented Programming (OOP)
+Modular code with ES6 classes (e.g., Car, Sensor, NeuralNetwork)
+Includes constructors, private methods (#method()), and inheritance
 
-<h3>🧮 Neural Network Details</h3>
-Structure: inputs -> hidden layer -> outputs
+Encapsulation & Private Methods
+Uses modern JS syntax (e.g., #createPolygon, #move) for encapsulated functionality
 
-Example: [5 sensor inputs] → [6 hidden] → [4 outputs] (forward, left, right, reverse)
+Canvas API
+Dynamic rendering of roads, vehicles, sensors, and neural networks
+Transformations (rotate/translate) simulate real car movement
 
-Outputs direct control & movement
+Animation Loop
+Smooth updates via requestAnimationFrame()
+Responsive canvas sizing (canvas.height = window.innerHeight)
 
-Uses hard threshold activation 
+Collision Detection
+Geometry-based using polygons and intersection checks (getIntersection(), polysIntersect())
 
-Mutated over generations to improve performance
+AI & Neural Network Design
+Custom feedforward architecture with tunable weights and biases
+Inputs: sensor data; Outputs: directional controls
+Threshold-based activation (sum > bias ? 1 : 0)
+Includes mutation-based learning with NeuralNetwork.mutate()
 
+Ray Casting for Sensors
+Each sensor casts rays to detect obstacles and road edges
+Intersection logic determines object distances
+
+User Interaction
+Interface buttons for saving/loading top-performing neural networks via localStorage
+
+Functional Programming Concepts
+Use of .map(), .forEach(), .find(), and spread syntax for streamlined logic
+
+</br>
+<h3>🧮 Neural Network Architecture</h3>
+Structure: Inputs → Hidden Layer → Outputs
+
+Example: 5 sensor inputs → 6 hidden neurons → 4 outputs (forward, left, right, reverse)
+
+Function: Output nodes directly control vehicle movement
+
+Learning: Hard-threshold activation, evolving through generations with mutations to enhance driving behavior
