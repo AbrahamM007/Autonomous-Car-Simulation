@@ -19,7 +19,7 @@ let bestCar = null;
 let traffic = [];
 let frameCount = 0;
 let generationTimer = 0;
-let maxGenerationTime = 3000; // 50 seconds at 60fps
+let maxGenerationTime = 1800; // 30 seconds at 60fps
 
 // Saved brain for loading
 let savedBrain = null;
@@ -95,7 +95,7 @@ function shouldEvolve() {
     const aliveCount = cars.filter(car => !car.damaged).length;
     const timeUp = generationTimer > maxGenerationTime;
     const allDead = aliveCount === 0;
-    const autoEvolveReady = uiManager.shouldAutoEvolve() && (timeUp || aliveCount < 5);
+    const autoEvolveReady = uiManager.shouldAutoEvolve() && (timeUp || aliveCount < 10);
     
     return allDead || autoEvolveReady;
 }
@@ -115,9 +115,6 @@ function evolveGeneration() {
     generateTraffic();
     
     generationTimer = 0;
-    
-    // Add evolution effect
-    particleSystem.addExplosion(carCanvas.width / 2, carCanvas.height / 2, '#00ff88');
 }
 
 function animate(time) {
@@ -141,9 +138,9 @@ function animate(time) {
         cars[i].update(road.borders, traffic, particleSystem);
     }
 
-    // Find best car
+    // Find best car (furthest distance)
     bestCar = cars.reduce((best, car) => {
-        return car.y < best.y ? car : best;
+        return car.distanceTraveled > best.distanceTraveled ? car : best;
     }, cars[0]);
     
     window.bestCar = bestCar;
@@ -156,7 +153,7 @@ function animate(time) {
     // Update UI
     const stats = geneticAlgorithm.getGenerationStats();
     stats.aliveCount = cars.filter(car => !car.damaged).length;
-    stats.bestDistance = bestCar ? Math.abs(bestCar.y - 100) : 0;
+    stats.bestDistance = bestCar ? bestCar.distanceTraveled : 0;
     uiManager.updateStats(stats);
 
     // Update particle system
@@ -182,21 +179,21 @@ function render() {
     
     // Draw traffic
     for (let i = 0; i < traffic.length; i++) {
-        traffic[i].draw(carCtx, false, particleSystem);
+        traffic[i].draw(carCtx, false);
     }
 
     // Draw all cars with transparency
     carCtx.globalAlpha = 0.2;
     for (let i = 0; i < cars.length; i++) {
         if (cars[i] !== bestCar) {
-            cars[i].draw(carCtx, false, particleSystem);
+            cars[i].draw(carCtx, false);
         }
     }
 
     // Draw best car highlighted
     carCtx.globalAlpha = 1;
     if (bestCar) {
-        bestCar.draw(carCtx, true, particleSystem);
+        bestCar.draw(carCtx, true);
     }
     
     // Draw particles

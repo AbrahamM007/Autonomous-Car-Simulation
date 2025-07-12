@@ -12,7 +12,7 @@ class EnhancedCar {
         this.angle = 0;
         this.damaged = false;
         
-        // Enhanced tracking
+        // Enhanced tracking for better fitness calculation
         this.fitness = 0;
         this.distanceTraveled = 0;
         this.timeAlive = 0;
@@ -24,16 +24,15 @@ class EnhancedCar {
         this.lastAngle = 0;
         this.speedHistory = [];
         
-        // Visual effects
-        this.trailPoints = [];
-        this.glowIntensity = 0;
+        // Visual properties
         this.color = this.generateColor();
         
         this.useBrain = controlType === "AI";
 
         if (controlType !== "DUMMY") {
             this.sensor = new EnhancedSensor(this);
-            this.brain = new EnhancedNeuralNetwork([10, 12, 8, 4]); // Enhanced architecture
+            // Simpler, more effective network architecture
+            this.brain = new EnhancedNeuralNetwork([this.sensor.rayCount, 6, 4]);
         }
 
         this.controls = new Controls(controlType);
@@ -42,8 +41,8 @@ class EnhancedCar {
     
     generateColor() {
         const colors = [
-            '#00ff88', '#00ccff', '#ff6b6b', '#ffd93d', 
-            '#6bcf7f', '#4ecdc4', '#45b7d1', '#96ceb4'
+            '#3498db', '#e74c3c', '#2ecc71', '#f39c12', 
+            '#9b59b6', '#1abc9c', '#34495e', '#e67e22'
         ];
         return colors[Math.floor(Math.random() * colors.length)];
     }
@@ -54,13 +53,7 @@ class EnhancedCar {
             this.polygon = this.createPolygon();
             this.damaged = this.assessDamage(roadBorders, traffic);
             
-            if (this.damaged && particleSystem) {
-                particleSystem.addExplosion(this.x, this.y, '#ff4444');
-            }
-            
             this.updateMetrics(roadBorders);
-            this.updateTrail();
-            this.updateGlow();
         }
 
         if (this.sensor) {
@@ -69,96 +62,61 @@ class EnhancedCar {
             const outputs = EnhancedNeuralNetwork.feedForward(inputs, this.brain);
 
             if (this.useBrain) {
-                this.controls.forward = outputs[0] > 0.5;
-                this.controls.left = outputs[1] > 0.5;
-                this.controls.right = outputs[2] > 0.5;
-                this.controls.reverse = outputs[3] > 0.5;
+                // Use threshold for decision making
+                this.controls.forward = outputs[0] > 0.1;
+                this.controls.left = outputs[1] > 0.1;
+                this.controls.right = outputs[2] > 0.1;
+                this.controls.reverse = outputs[3] > 0.1;
             }
         }
     }
     
     prepareSensorInputs() {
-        const sensorInputs = this.sensor.readings.map(s => s == null ? 0 : 1 - s.offset);
-        
-        // Add additional inputs for better decision making
-        const additionalInputs = [
-            this.speed / this.maxSpeed, // Normalized speed
-            Math.sin(this.angle), // Angle components
-            Math.cos(this.angle)
-        ];
-        
-        return [...sensorInputs, ...additionalInputs];
+        // Normalize sensor inputs between 0 and 1
+        return this.sensor.readings.map(s => s == null ? 0 : 1 - s.offset);
     }
     
     updateMetrics(roadBorders) {
         this.timeAlive++;
         
-        // Distance tracking
+        // Track distance traveled
         const distanceThisFrame = Math.abs(this.y - this.lastY);
         this.distanceTraveled += distanceThisFrame;
         this.lastY = this.y;
         
-        // Lane keeping
+        // Lane keeping score
         const roadCenter = roadBorders[0][0].x + (roadBorders[1][0].x - roadBorders[0][0].x) / 2;
         const distanceFromCenter = Math.abs(this.x - roadCenter);
         const maxRoadWidth = Math.abs(roadBorders[1][0].x - roadBorders[0][0].x);
-        this.laneKeepingScore += (1 - distanceFromCenter / maxRoadWidth) * 0.1;
+        const laneKeepingThisFrame = Math.max(0, 1 - (distanceFromCenter / (maxRoadWidth / 2)));
+        this.laneKeepingScore += laneKeepingThisFrame;
         
-        // Smooth driving (less steering changes)
+        // Smooth driving score (penalize erratic steering)
         const angleDiff = Math.abs(this.angle - this.lastAngle);
-        this.smoothDrivingScore += Math.max(0, 0.1 - angleDiff);
+        this.smoothDrivingScore += Math.max(0, 0.1 - angleDiff * 10);
         this.lastAngle = this.angle;
         
-        // Speed consistency
-        this.speedHistory.push(this.speed);
-        if (this.speedHistory.length > 60) { // Keep last 60 frames
-            this.speedHistory.shift();
-        }
-        
         // Checkpoint system
-        if (this.distanceTraveled > this.checkpointsReached * 100) {
-            this.checkpointsReached++;
-            this.glowIntensity = 1.0; // Trigger glow effect
-        }
-    }
-    
-    updateTrail() {
-        // Add current position to trail
-        this.trailPoints.push({ x: this.x, y: this.y, life: 30 });
-        
-        // Update trail points
-        for (let i = this.trailPoints.length - 1; i >= 0; i--) {
-            this.trailPoints[i].life--;
-            if (this.trailPoints[i].life <= 0) {
-                this.trailPoints.splice(i, 1);
-            }
-        }
-        
-        // Limit trail length
-        while (this.trailPoints.length > 20) {
-            this.trailPoints.shift();
-        }
-    }
-    
-    updateGlow() {
-        if (this.glowIntensity > 0) {
-            this.glowIntensity -= 0.02;
+        const checkpointDistance = 200;
+        const expectedCheckpoints = Math.floor(this.distanceTraveled / checkpointDistance);
+        if (expectedCheckpoints > this.checkpointsReached) {
+            this.checkpointsReached = expectedCheckpoints;
         }
     }
 
     assessDamage(roadBorders, traffic) {
-        // Road border collision
+        // Check road border collision
         for (let i = 0; i < roadBorders.length; i++) {
             if (polysIntersect(this.polygon, roadBorders[i])) {
-                this.collisionPenalty += 1000;
+                this.collisionPenalty += 100;
                 return true;
             }
         }
         
-        // Traffic collision
+        // Check traffic collision
         for (let i = 0; i < traffic.length; i++) {
             if (polysIntersect(this.polygon, traffic[i].polygon)) {
-                this.collisionPenalty += 500;
+                this.collisionPenalty += 50;
                 return true;
             }
         }
@@ -230,17 +188,8 @@ class EnhancedCar {
         this.y -= Math.cos(this.angle) * this.speed;
     }
 
-    draw(ctx, drawSensor = false, particleSystem = null) {
-        // Draw trail
-        this.drawTrail(ctx);
-        
+    draw(ctx, drawSensor = false) {
         ctx.save();
-        
-        // Apply glow effect
-        if (this.glowIntensity > 0) {
-            ctx.shadowBlur = 20 * this.glowIntensity;
-            ctx.shadowColor = this.color;
-        }
         
         if (this.damaged) {
             ctx.globalAlpha = 0.3;
@@ -260,16 +209,6 @@ class EnhancedCar {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
-        
-        // Draw direction indicator
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(
-            this.x - Math.sin(this.angle) * this.height * 0.3,
-            this.y - Math.cos(this.angle) * this.height * 0.3,
-            3, 0, Math.PI * 2
-        );
-        ctx.fill();
 
         ctx.restore();
 
@@ -277,29 +216,5 @@ class EnhancedCar {
         if (this.sensor && drawSensor) {
             this.sensor.draw(ctx);
         }
-        
-        // Add sparkle effects for high-performing cars
-        if (particleSystem && this.checkpointsReached > 3 && Math.random() < 0.1) {
-            particleSystem.addSparkle(this.x, this.y, this.color);
-        }
-    }
-    
-    drawTrail(ctx) {
-        if (this.trailPoints.length < 2) return;
-        
-        ctx.save();
-        for (let i = 1; i < this.trailPoints.length; i++) {
-            const point = this.trailPoints[i];
-            const alpha = point.life / 30;
-            
-            ctx.globalAlpha = alpha * 0.3;
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(this.trailPoints[i-1].x, this.trailPoints[i-1].y);
-            ctx.lineTo(point.x, point.y);
-            ctx.stroke();
-        }
-        ctx.restore();
     }
 }

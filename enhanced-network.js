@@ -19,20 +19,20 @@ class EnhancedNeuralNetwork {
 
     static mutate(network, amount = 0.1) {
         network.levels.forEach(level => {
-            // Mutate biases
+            // Mutate biases with smaller, more controlled changes
             for (let i = 0; i < level.biases.length; i++) {
                 if (Math.random() < amount) {
-                    level.biases[i] += (Math.random() * 2 - 1) * 0.5;
-                    level.biases[i] = Math.max(-2, Math.min(2, level.biases[i]));
+                    level.biases[i] += (Math.random() * 2 - 1) * 0.2;
+                    level.biases[i] = Math.max(-1, Math.min(1, level.biases[i]));
                 }
             }
             
-            // Mutate weights
+            // Mutate weights with smaller, more controlled changes
             for (let i = 0; i < level.weights.length; i++) {
                 for (let j = 0; j < level.weights[i].length; j++) {
                     if (Math.random() < amount) {
-                        level.weights[i][j] += (Math.random() * 2 - 1) * 0.5;
-                        level.weights[i][j] = Math.max(-2, Math.min(2, level.weights[i][j]));
+                        level.weights[i][j] += (Math.random() * 2 - 1) * 0.2;
+                        level.weights[i][j] = Math.max(-1, Math.min(1, level.weights[i][j]));
                     }
                 }
             }
@@ -55,19 +55,15 @@ class EnhancedLevel {
     }
 
     static randomize(level) {
-        // Xavier initialization for better training
-        const inputCount = level.inputs.length;
-        const outputCount = level.outputs.length;
-        const limit = Math.sqrt(6 / (inputCount + outputCount));
-        
-        for (let i = 0; i < inputCount; i++) {
-            for (let j = 0; j < outputCount; j++) {
-                level.weights[i][j] = (Math.random() * 2 - 1) * limit;
+        // Better initialization for faster learning
+        for (let i = 0; i < level.inputs.length; i++) {
+            for (let j = 0; j < level.outputs.length; j++) {
+                level.weights[i][j] = Math.random() * 2 - 1;
             }
         }
 
-        for (let i = 0; i < outputCount; i++) {
-            level.biases[i] = (Math.random() * 2 - 1) * 0.5;
+        for (let i = 0; i < level.outputs.length; i++) {
+            level.biases[i] = Math.random() * 2 - 1;
         }
     }
 
@@ -82,22 +78,10 @@ class EnhancedLevel {
                 sum += level.inputs[j] * level.weights[j][i];
             }
             
-            // Enhanced sigmoid activation
-            level.outputs[i] = EnhancedLevel.sigmoid(sum + level.biases[i]);
+            // Use tanh activation for better learning
+            level.outputs[i] = Math.tanh(sum + level.biases[i]);
         }
 
         return level.outputs;
-    }
-    
-    static sigmoid(x) {
-        return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, x))));
-    }
-    
-    static tanh(x) {
-        return Math.tanh(Math.max(-500, Math.min(500, x)));
-    }
-    
-    static relu(x) {
-        return Math.max(0, x);
     }
 }
